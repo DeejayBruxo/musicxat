@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Biblioteca de Músicas</title>
     <style>
-        body { font-family: Arial, sans-serif; display: flex; flex-direction: column; background: #8B4513; color: #fff; }
+        body { font-family: Arial, sans-serif; display: flex; flex-direction: column; background: #8B4513; color: #fff; margin: 0; }
         .header { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #D2691E; }
         .sidebar { width: 200px; background: #A0522D; padding: 10px; height: 100vh; overflow-y: auto; }
         .tab { cursor: pointer; padding: 10px; background: #CD853F; margin-bottom: 5px; border-radius: 5px; color: #fff; }
@@ -14,9 +14,11 @@
         .bands, .songs { width: 300px; padding: 10px; height: 100vh; overflow-y: auto; display: block; }
         .bands { background: #DEB887; color: #000; }
         .songs { background: #F4A460; color: #000; }
-        button { background: #8B4513; color: #fff; border: none; padding: 5px 10px; cursor: pointer; }
+        button { background: #8B4513; color: #fff; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
         button:hover { background: #A0522D; }
-        select, input { background: #DEB887; color: #000; border: 1px solid #8B4513; padding: 5px; }
+        select, input { background: #DEB887; color: #000; border: 1px solid #8B4513; padding: 5px; margin-right: 5px; }
+        p { margin: 5px 0; }
+        .upload-container input[type="text"] { width: 150px; }
     </style>
 </head>
 <body>
@@ -61,87 +63,123 @@
     </div>
     
     <script>
-    const musicData = JSON.parse(localStorage.getItem("musicData")) || {};
+        const musicData = JSON.parse(localStorage.getItem("musicData")) || {};
 
-    window.onload = () => {
-        // opcional: abrir o primeiro gênero por padrão
-        showGenres("nacional");
-    };
+        window.onload = () => {
+            showGenres("nacional");
+        };
 
-    function showGenres(genre) {
-        const bandList = document.getElementById("bands-list");
-        bandList.innerHTML = "<h3>Bandas</h3>";
+        function showGenres(genre) {
+            const bandList = document.getElementById("bands-list");
+            bandList.innerHTML = "<h3>Bandas</h3>";
 
-        if (musicData[genre]) {
-            Object.keys(musicData[genre]).forEach(band => {
-                bandList.innerHTML += `<p onclick="showSongs('${genre}', '${band}')">${band}</p>`;
-            });
-            bandList.style.display = "block";
-        } else {
-            bandList.style.display = "none";
-        }
-        document.getElementById("songs-list").style.display = "none";
-    }
-
-    function showSongs(genre, band) {
-        const songList = document.getElementById("songs-list");
-        songList.innerHTML = `<h3>Músicas de ${band}</h3>`;
-
-        if (musicData[genre] && musicData[genre][band]) {
-            musicData[genre][band].forEach(song => {
-                songList.innerHTML += `<p onclick="playMusic('${song.url}')">${song.name.replace(/\.[^/.]+$/, "")} - ${song.duration}</p>`;
-            });
-        }
-
-        songList.style.display = "block";
-    }
-
-    function playMusic(songUrl) {
-        const audio = document.getElementById("audioPlayer");
-        audio.src = songUrl;
-        audio.style.display = "block";
-        audio.play();
-    }
-
-    function uploadMusic() {
-        const genre = document.getElementById("genreSelect").value;
-        const band = document.getElementById("bandName").value.trim();
-        const fileInput = document.getElementById("fileInput");
-        const file = fileInput.files[0];
-
-        if (!band || !file) {
-            alert("Por favor, selecione um gênero, insira o nome da banda e escolha um arquivo de música.");
-            return;
-        }
-
-        const fileUrl = URL.createObjectURL(file);
-        const audio = new Audio(fileUrl);
-        audio.addEventListener("loadedmetadata", () => {
-            const duration = formatTime(audio.duration);
-
-            if (!musicData[genre]) {
-                musicData[genre] = {};
-            }
-            if (!musicData[genre][band]) {
-                musicData[genre][band] = [];
+            if (musicData[genre]) {
+                Object.keys(musicData[genre]).forEach(band => {
+                    bandList.innerHTML += `
+                        <p>
+                            <span onclick="showSongs('${genre}', '${band}')">${band}</span>
+                            <button onclick="deleteBand('${genre}', '${band}')" style="margin-left:10px;">🗑️</button>
+                        </p>`;
+                });
+                bandList.style.display = "block";
+            } else {
+                bandList.style.display = "none";
             }
 
-            musicData[genre][band].push({ name: file.name, url: fileUrl, duration: duration });
+            document.getElementById("songs-list").style.display = "none";
+        }
 
-            // Salva no localStorage
-            localStorage.setItem("musicData", JSON.stringify(musicData));
+        function showSongs(genre, band) {
+            const songList = document.getElementById("songs-list");
+            songList.innerHTML = `<h3>Músicas de ${band}</h3>`;
 
-            alert("Música adicionada com sucesso!");
-            fileInput.value = "";
-        });
-    }
+            if (musicData[genre] && musicData[genre][band]) {
+                musicData[genre][band].forEach((song, index) => {
+                    songList.innerHTML += `
+                        <p>
+                            <span onclick="playMusic('${song.url}')">${song.name.replace(/\.[^/.]+$/, "")} - ${song.duration}</span>
+                            <button onclick="deleteSong('${genre}', '${band}', ${index})" style="margin-left:10px;">🗑️</button>
+                        </p>`;
+                });
+            }
 
-    function formatTime(seconds) {
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-    }
-</script>
+            songList.style.display = "block";
+        }
 
+        function playMusic(songUrl) {
+            const audio = document.getElementById("audioPlayer");
+            audio.src = songUrl;
+            audio.style.display = "block";
+            audio.play();
+        }
+
+        function uploadMusic() {
+            const genre = document.getElementById("genreSelect").value;
+            const band = document.getElementById("bandName").value.trim();
+            const fileInput = document.getElementById("fileInput");
+            const file = fileInput.files[0];
+
+            if (!band || !file) {
+                alert("Por favor, selecione um gênero, insira o nome da banda e escolha um arquivo de música.");
+                return;
+            }
+
+            const fileUrl = URL.createObjectURL(file);
+            const audio = new Audio(fileUrl);
+            audio.addEventListener("loadedmetadata", () => {
+                const duration = formatTime(audio.duration);
+
+                if (!musicData[genre]) {
+                    musicData[genre] = {};
+                }
+                if (!musicData[genre][band]) {
+                    musicData[genre][band] = [];
+                }
+
+                musicData[genre][band].push({ name: file.name, url: fileUrl, duration: duration });
+
+                localStorage.setItem("musicData", JSON.stringify(musicData));
+
+                alert("Música adicionada com sucesso!");
+                fileInput.value = "";
+            });
+        }
+
+        function deleteSong(genre, band, index) {
+            if (confirm("Tem certeza que deseja remover esta música?")) {
+                musicData[genre][band].splice(index, 1);
+                if (musicData[genre][band].length === 0) {
+                    delete musicData[genre][band];
+                }
+                if (Object.keys(musicData[genre]).length === 0) {
+                    delete musicData[genre];
+                }
+
+                localStorage.setItem("musicData", JSON.stringify(musicData));
+                showGenres(genre);
+                document.getElementById("songs-list").style.display = "none";
+            }
+        }
+
+        function deleteBand(genre, band) {
+            if (confirm(`Deseja realmente excluir todas as músicas da banda "${band}"?`)) {
+                delete musicData[genre][band];
+
+                if (Object.keys(musicData[genre]).length === 0) {
+                    delete musicData[genre];
+                }
+
+                localStorage.setItem("musicData", JSON.stringify(musicData));
+                showGenres(genre);
+                document.getElementById("songs-list").style.display = "none";
+            }
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+    </script>
 </body>
 </html>
