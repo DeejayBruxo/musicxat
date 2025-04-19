@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biblioteca de Músicas</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; flex-direction: column; background: #8B4513; color: #fff; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #D2691E; }
+        .sidebar { width: 200px; background: #A0522D; padding: 10px; height: 100vh; overflow-y: auto; }
+        .tab { cursor: pointer; padding: 10px; background: #CD853F; margin-bottom: 5px; border-radius: 5px; color: #fff; }
+        .tab:hover { background: #A0522D; }
+        .main-container { display: flex; flex-grow: 1; }
+        .bands, .songs { width: 300px; padding: 10px; height: 100vh; overflow-y: auto; display: block; }
+        .bands { background: #DEB887; color: #000; }
+        .songs { background: #F4A460; color: #000; }
+        button { background: #8B4513; color: #fff; border: none; padding: 5px 10px; cursor: pointer; }
+        button:hover { background: #A0522D; }
+        select, input { background: #DEB887; color: #000; border: 1px solid #8B4513; padding: 5px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="upload-container">
+            <h3>Upload de Música</h3>
+            <select id="genreSelect">
+                <option value="nacional">Nacional</option>
+                <option value="internacional">Internacional</option>
+                <option value="rock">Rock</option>
+                <option value="metal">Metal</option>
+                <option value="indie">Indie</option>
+                <option value="hiphop-rap">Hip-Hop/Rap</option>
+                <option value="sertanejo">Sertanejo</option>
+                <option value="zueira">Zueira</option>
+            </select>
+            <input type="text" id="bandName" placeholder="Nome da Banda">
+            <input type="file" id="fileInput" accept="audio/mp3">
+            <button onclick="uploadMusic()">Enviar</button>
+        </div>
+        <div class="player-container">
+            <audio id="audioPlayer" controls>
+                Seu navegador não suporta áudio HTML5.
+            </audio>
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="tab" onclick="showGenres('nacional')">Nacional</div>
+            <div class="tab" onclick="showGenres('internacional')">Internacional</div>
+            <div class="tab" onclick="showGenres('rock')">Rock</div>
+            <div class="tab" onclick="showGenres('metal')">Metal</div>
+            <div class="tab" onclick="showGenres('indie')">Indie</div>
+            <div class="tab" onclick="showGenres('hiphop-rap')">Hip-Hop/Rap</div>
+            <div class="tab" onclick="showGenres('sertanejo')">Sertanejo</div>
+            <div class="tab" onclick="showGenres('zueira')">Zueira</div>
+        </div>
+        
+        <div class="bands" id="bands-list"></div>
+        <div class="songs" id="songs-list"></div>
+    </div>
+    
+    <script>
+    const musicData = JSON.parse(localStorage.getItem("musicData")) || {};
+
+    window.onload = () => {
+        // opcional: abrir o primeiro gênero por padrão
+        showGenres("nacional");
+    };
+
+    function showGenres(genre) {
+        const bandList = document.getElementById("bands-list");
+        bandList.innerHTML = "<h3>Bandas</h3>";
+
+        if (musicData[genre]) {
+            Object.keys(musicData[genre]).forEach(band => {
+                bandList.innerHTML += `<p onclick="showSongs('${genre}', '${band}')">${band}</p>`;
+            });
+            bandList.style.display = "block";
+        } else {
+            bandList.style.display = "none";
+        }
+        document.getElementById("songs-list").style.display = "none";
+    }
+
+    function showSongs(genre, band) {
+        const songList = document.getElementById("songs-list");
+        songList.innerHTML = `<h3>Músicas de ${band}</h3>`;
+
+        if (musicData[genre] && musicData[genre][band]) {
+            musicData[genre][band].forEach(song => {
+                songList.innerHTML += `<p onclick="playMusic('${song.url}')">${song.name.replace(/\.[^/.]+$/, "")} - ${song.duration}</p>`;
+            });
+        }
+
+        songList.style.display = "block";
+    }
+
+    function playMusic(songUrl) {
+        const audio = document.getElementById("audioPlayer");
+        audio.src = songUrl;
+        audio.style.display = "block";
+        audio.play();
+    }
+
+    function uploadMusic() {
+        const genre = document.getElementById("genreSelect").value;
+        const band = document.getElementById("bandName").value.trim();
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+
+        if (!band || !file) {
+            alert("Por favor, selecione um gênero, insira o nome da banda e escolha um arquivo de música.");
+            return;
+        }
+
+        const fileUrl = URL.createObjectURL(file);
+        const audio = new Audio(fileUrl);
+        audio.addEventListener("loadedmetadata", () => {
+            const duration = formatTime(audio.duration);
+
+            if (!musicData[genre]) {
+                musicData[genre] = {};
+            }
+            if (!musicData[genre][band]) {
+                musicData[genre][band] = [];
+            }
+
+            musicData[genre][band].push({ name: file.name, url: fileUrl, duration: duration });
+
+            // Salva no localStorage
+            localStorage.setItem("musicData", JSON.stringify(musicData));
+
+            alert("Música adicionada com sucesso!");
+            fileInput.value = "";
+        });
+    }
+
+    function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+</script>
+
+</body>
+</html>
